@@ -1,0 +1,1866 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!--
+   ______                            __
+  / ____/___  ____ ___  ____  __  __/ /____  _____
+ / /   / __ \/ __ `__ \/ __ \/ / / / __/ _ \/ ___/
+/ /___/ /_/ / / / / / / /_/ / /_/ / /_/  __/ /
+\____/\____/_/ /_/ /_/ .___/\__,_/\__/\___/_/
+                    /_/
+        Created with Perplexity Computer
+        https://www.perplexity.ai/computer
+-->
+
+<!-- Perplexity Computer Attribution — SEO Meta Tags -->
+<meta name="generator" content="Perplexity Computer">
+<meta name="author" content="Perplexity Computer">
+<meta property="og:see_also" content="https://www.perplexity.ai/computer">
+<link rel="author" href="https://www.perplexity.ai/computer">
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VettedAI Pipeline Dashboard</title>
+<meta name="description" content="Mission-control dashboard for VettedAI content intelligence pipeline">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
+
+<style>
+/* ─── CSS Custom Properties ─── */
+:root {
+  --color-bg:        #0A101E;
+  --color-surface:   #0F1829;
+  --color-border:    #1E2D4A;
+  --color-accent:    #3B82F6;
+  --color-secondary: #6366F1;
+  --color-success:   #10B981;
+  --color-warning:   #F59E0B;
+  --color-danger:    #EF4444;
+  --color-text:      #E2E8F0;
+  --color-muted:     #64748B;
+  --glow-accent:     0 0 12px rgba(59,130,246,0.4);
+  --glow-hover:      0 0 8px rgba(59,130,246,0.25);
+}
+
+/* ─── Reset ─── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ─── Base ─── */
+html, body {
+  height: 100%;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── Scanline overlay ─── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.03) 2px,
+    rgba(0,0,0,0.03) 4px
+  );
+}
+
+/* ─── Scrollbars ─── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--color-bg); }
+::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-muted); }
+
+/* ─── Typography ─── */
+h1, h2, h3, h4, .mono {
+  font-family: 'Space Mono', monospace;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─── Layout ─── */
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ─── Header ─── */
+.header {
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  padding: 10px 16px;
+  flex-shrink: 0;
+}
+
+.header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.logo-area {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logo-area h1 {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--color-text);
+}
+
+.logo-area h1 span {
+  color: var(--color-accent);
+}
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.global-counters {
+  display: flex;
+  gap: 20px;
+}
+
+.counter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.counter-value {
+  font-family: 'Space Mono', monospace;
+  font-size: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-accent);
+}
+
+.counter-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--color-muted);
+}
+
+.btn-refresh {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  padding: 6px 12px;
+  border-radius: 3px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px;
+  transition: all 0.2s;
+}
+
+.btn-refresh:hover {
+  border-color: var(--color-accent);
+  box-shadow: var(--glow-hover);
+}
+
+.btn-refresh.spinning .refresh-icon {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Pipeline stages */
+.pipeline-stages {
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+}
+
+.stage {
+  flex: 1;
+  min-width: 100px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+  padding: 6px 8px;
+  text-align: center;
+}
+
+.stage-name {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-muted);
+  margin-bottom: 4px;
+  white-space: nowrap;
+}
+
+.stage-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 1px 6px;
+  border-radius: 2px;
+}
+
+.stage-status.idle {
+  color: var(--color-muted);
+}
+
+.stage-status.running {
+  color: var(--color-accent);
+}
+
+.stage-status.complete {
+  color: var(--color-success);
+}
+
+.stage-status.error {
+  color: var(--color-danger);
+}
+
+.pulse-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.7); }
+}
+
+.stage-time {
+  font-size: 9px;
+  color: var(--color-muted);
+  margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─── Main Content ─── */
+.main {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 300px 1fr 300px;
+  grid-template-rows: 1fr auto;
+  gap: 1px;
+  background: var(--color-border);
+  overflow: hidden;
+}
+
+/* ─── Columns ─── */
+.column {
+  background: var(--color-bg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.column-header {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.column-header h2 {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--color-muted);
+}
+
+.column-count {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  color: var(--color-accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.column-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+/* ─── Signal Cards ─── */
+.signal-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+  padding: 10px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.signal-card:hover {
+  border-color: rgba(59,130,246,0.3);
+  box-shadow: inset 0 0 8px rgba(59,130,246,0.05);
+}
+
+.signal-card.active {
+  border-color: var(--color-accent);
+  box-shadow: var(--glow-accent);
+}
+
+.signal-topic {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-bottom: 6px;
+  line-height: 1.4;
+}
+
+.signal-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+/* Badges / Pills */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.badge-rss {
+  background: rgba(59,130,246,0.15);
+  color: #3B82F6;
+}
+
+.badge-youtube {
+  background: rgba(239,68,68,0.15);
+  color: #EF4444;
+}
+
+.badge-perplexity {
+  background: rgba(99,102,241,0.15);
+  color: #6366F1;
+}
+
+.badge-category {
+  background: rgba(100,116,139,0.2);
+  color: var(--color-muted);
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-new { background: rgba(59,130,246,0.15); color: var(--color-accent); }
+.status-queued { background: rgba(245,158,11,0.15); color: var(--color-warning); }
+.status-draft-complete { background: rgba(99,102,241,0.15); color: var(--color-secondary); }
+.status-in-review { background: rgba(245,158,11,0.15); color: var(--color-warning); }
+.status-published { background: rgba(16,185,129,0.15); color: var(--color-success); }
+.status-pending-review { background: rgba(245,158,11,0.15); color: var(--color-warning); }
+.status-revision-requested { background: rgba(239,68,68,0.15); color: var(--color-danger); }
+
+/* Score bar */
+.score-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.score-label {
+  font-size: 10px;
+  color: var(--color-muted);
+  min-width: 80px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.score-bar {
+  flex: 1;
+  height: 4px;
+  background: rgba(30,45,74,0.6);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.score-bar-fill {
+  height: 100%;
+  background: var(--color-accent);
+  border-radius: 2px;
+  transition: width 0.3s;
+}
+
+.score-value {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+  min-width: 24px;
+  text-align: right;
+}
+
+.signal-timestamp {
+  font-size: 10px;
+  color: var(--color-muted);
+}
+
+/* Signal expanded */
+.signal-expanded {
+  display: none;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border);
+}
+
+.signal-card.active .signal-expanded {
+  display: block;
+}
+
+.signal-summary {
+  font-size: 12px;
+  color: var(--color-text);
+  opacity: 0.85;
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+.signal-reason {
+  font-size: 11px;
+  color: var(--color-muted);
+  margin-bottom: 8px;
+  font-style: italic;
+}
+
+.btn-view-brief {
+  background: rgba(59,130,246,0.1);
+  border: 1px solid rgba(59,130,246,0.3);
+  color: var(--color-accent);
+  padding: 4px 10px;
+  border-radius: 2px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: 'IBM Plex Sans', sans-serif;
+  transition: all 0.15s;
+}
+
+.btn-view-brief:hover {
+  background: rgba(59,130,246,0.2);
+  box-shadow: var(--glow-hover);
+}
+
+/* ─── Review Queue ─── */
+.review-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+  padding: 14px;
+  margin-bottom: 10px;
+}
+
+.review-card:hover {
+  border-color: rgba(59,130,246,0.3);
+}
+
+.review-thumb {
+  width: 100%;
+  height: 140px;
+  object-fit: cover;
+  border-radius: 2px;
+  margin-bottom: 10px;
+  border: 1px solid var(--color-border);
+}
+
+.review-title {
+  font-family: 'Space Mono', monospace;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+.review-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.review-meta-item {
+  font-size: 11px;
+  color: var(--color-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.review-body {
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 2px;
+  padding: 10px;
+  margin-bottom: 12px;
+  background: var(--color-bg);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.review-body h1, .review-body h2, .review-body h3 {
+  color: var(--color-text);
+  margin: 12px 0 6px;
+}
+
+.review-body h1 { font-size: 16px; }
+.review-body h2 { font-size: 14px; }
+.review-body h3 { font-size: 13px; }
+
+.review-body p {
+  margin-bottom: 8px;
+  color: var(--color-text);
+  opacity: 0.9;
+}
+
+.review-body ul, .review-body ol {
+  padding-left: 18px;
+  margin-bottom: 8px;
+}
+
+.review-body li {
+  margin-bottom: 4px;
+  color: var(--color-text);
+  opacity: 0.85;
+}
+
+.review-body code {
+  background: rgba(59,130,246,0.1);
+  padding: 1px 4px;
+  border-radius: 2px;
+  font-size: 12px;
+}
+
+.review-body a {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+.review-body a:hover {
+  text-decoration: underline;
+}
+
+.review-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-approve {
+  flex: 1;
+  background: rgba(16,185,129,0.15);
+  border: 1px solid rgba(16,185,129,0.4);
+  color: var(--color-success);
+  padding: 8px 12px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: all 0.15s;
+}
+
+.btn-approve:hover {
+  background: rgba(16,185,129,0.25);
+  box-shadow: 0 0 12px rgba(16,185,129,0.3);
+}
+
+.btn-revisions {
+  flex: 1;
+  background: rgba(245,158,11,0.15);
+  border: 1px solid rgba(245,158,11,0.4);
+  color: var(--color-warning);
+  padding: 8px 12px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: all 0.15s;
+}
+
+.btn-revisions:hover {
+  background: rgba(245,158,11,0.25);
+  box-shadow: 0 0 12px rgba(245,158,11,0.3);
+}
+
+.revision-form {
+  display: none;
+  margin-top: 8px;
+}
+
+.revision-form.active {
+  display: block;
+}
+
+.revision-textarea {
+  width: 100%;
+  min-height: 80px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 2px;
+  color: var(--color-text);
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px;
+  padding: 8px;
+  resize: vertical;
+  margin-bottom: 8px;
+}
+
+.revision-textarea:focus {
+  outline: none;
+  border-color: var(--color-warning);
+  box-shadow: 0 0 8px rgba(245,158,11,0.2);
+}
+
+.btn-submit-revision {
+  background: var(--color-warning);
+  border: none;
+  color: #000;
+  padding: 6px 14px;
+  border-radius: 2px;
+  cursor: pointer;
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ─── Empty State ─── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--color-muted);
+}
+
+.empty-icon {
+  width: 48px;
+  height: 48px;
+  margin-bottom: 12px;
+  opacity: 0.3;
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+.empty-state h3 {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: var(--color-muted);
+}
+
+.empty-state p {
+  font-size: 11px;
+  opacity: 0.6;
+}
+
+/* ─── Published Cards ─── */
+.published-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+  padding: 10px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.published-card:hover {
+  border-color: rgba(16,185,129,0.3);
+  box-shadow: inset 0 0 8px rgba(16,185,129,0.05);
+}
+
+.published-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text);
+  margin-bottom: 4px;
+  line-height: 1.3;
+}
+
+.published-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  color: var(--color-muted);
+}
+
+/* ─── Pipeline Errors ─── */
+.errors-section {
+  grid-column: 1 / -1;
+  background: var(--color-bg);
+  border-top: 1px solid var(--color-border);
+}
+
+.errors-header {
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+}
+
+.errors-header:hover {
+  background: rgba(239,68,68,0.03);
+}
+
+.errors-header h3 {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--color-muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.error-count-badge {
+  background: rgba(239,68,68,0.2);
+  color: var(--color-danger);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 2px;
+  font-family: 'Space Mono', monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.errors-toggle {
+  color: var(--color-muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.errors-body {
+  display: none;
+  padding: 0 16px 8px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.errors-section.expanded .errors-body {
+  display: block;
+}
+
+.error-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.error-table th {
+  text-align: left;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-muted);
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.error-table td {
+  padding: 4px 8px;
+  border-bottom: 1px solid rgba(30,45,74,0.3);
+  color: var(--color-text);
+  vertical-align: top;
+}
+
+.error-table .error-msg {
+  color: var(--color-danger);
+  max-width: 500px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.error-table .error-time {
+  color: var(--color-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.error-table .error-stage {
+  font-weight: 500;
+}
+
+/* ─── Modal ─── */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(10,16,30,0.9);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.modal-overlay.active {
+  display: flex;
+}
+
+.modal {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  max-width: 800px;
+  width: 100%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 0 40px rgba(0,0,0,0.5), var(--glow-accent);
+}
+
+.modal-header {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.modal-title {
+  font-family: 'Space Mono', monospace;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.modal-close {
+  background: none;
+  border: 1px solid var(--color-border);
+  color: var(--color-muted);
+  width: 28px;
+  height: 28px;
+  border-radius: 3px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  transition: all 0.15s;
+}
+
+.modal-close:hover {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+
+.modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.modal-body h1, .modal-body h2, .modal-body h3 {
+  color: var(--color-text);
+  margin: 16px 0 8px;
+}
+
+.modal-body h1 { font-size: 18px; }
+.modal-body h2 { font-size: 15px; }
+.modal-body h3 { font-size: 14px; }
+
+.modal-body p {
+  margin-bottom: 10px;
+  color: var(--color-text);
+  opacity: 0.9;
+}
+
+.modal-body ul, .modal-body ol {
+  padding-left: 20px;
+  margin-bottom: 10px;
+}
+
+.modal-body li {
+  margin-bottom: 4px;
+  color: var(--color-text);
+  opacity: 0.85;
+}
+
+.modal-body code {
+  background: rgba(59,130,246,0.1);
+  padding: 1px 5px;
+  border-radius: 2px;
+  font-size: 12px;
+}
+
+.modal-body a {
+  color: var(--color-accent);
+}
+
+.modal-meta {
+  padding: 10px 16px;
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  gap: 16px;
+  font-size: 11px;
+  color: var(--color-muted);
+  flex-shrink: 0;
+}
+
+/* ─── Footer ─── */
+.footer {
+  grid-column: 1 / -1;
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+  padding: 6px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--color-muted);
+  flex-shrink: 0;
+}
+
+.footer a {
+  color: var(--color-muted);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.footer a:hover {
+  color: var(--color-accent);
+}
+
+/* ─── Loading skeleton ─── */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-surface) 0%,
+    rgba(30,45,74,0.4) 50%,
+    var(--color-surface) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 2px;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.skeleton-card {
+  height: 80px;
+  margin-bottom: 6px;
+}
+
+.skeleton-review {
+  height: 200px;
+  margin-bottom: 10px;
+}
+
+/* ─── Status indicator text ─── */
+.auto-refresh-indicator {
+  font-size: 10px;
+  color: var(--color-muted);
+  opacity: 0.6;
+}
+
+/* ─── Responsive ─── */
+@media (max-width: 1024px) {
+  .main {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+    overflow-y: auto;
+  }
+
+  .column {
+    max-height: 500px;
+  }
+
+  .pipeline-stages {
+    flex-wrap: wrap;
+  }
+
+  .stage {
+    min-width: 80px;
+  }
+}
+
+@media (max-width: 640px) {
+  .header-top {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .header-controls {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .global-counters {
+    gap: 12px;
+  }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- ─── HEADER ─── -->
+  <header class="header">
+    <div class="header-top">
+      <div class="logo-area">
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="VettedAI Logo">
+          <rect x="1" y="1" width="30" height="30" rx="3" stroke="#3B82F6" stroke-width="1.5"/>
+          <path d="M8 10L16 22L24 10" stroke="#3B82F6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="16" cy="10" r="2" fill="#3B82F6"/>
+          <line x1="10" y1="26" x2="22" y2="26" stroke="#3B82F6" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="2 3"/>
+        </svg>
+        <h1><span>VETTED</span>AI</h1>
+      </div>
+      <div class="header-controls">
+        <div class="global-counters">
+          <div class="counter">
+            <span class="counter-value tabular" id="total-signals">—</span>
+            <span class="counter-label">Signals</span>
+          </div>
+          <div class="counter">
+            <span class="counter-value tabular" id="pending-review" style="color:var(--color-warning)">—</span>
+            <span class="counter-label">Pending</span>
+          </div>
+          <div class="counter">
+            <span class="counter-value tabular" id="published-count" style="color:var(--color-success)">—</span>
+            <span class="counter-label">Published</span>
+          </div>
+        </div>
+        <button class="btn-refresh" id="btn-refresh" title="Refresh data">
+          <svg class="refresh-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <polyline points="1 20 1 14 7 14"></polyline>
+            <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"></path>
+          </svg>
+          REFRESH
+        </button>
+        <span class="auto-refresh-indicator" id="refresh-timer">Auto-refresh: 60s</span>
+      </div>
+    </div>
+    <div class="pipeline-stages" id="pipeline-stages">
+      <!-- Rendered by JS -->
+    </div>
+  </header>
+
+  <!-- ─── MAIN 3-COLUMN LAYOUT ─── -->
+  <div class="main">
+    <!-- Signal Feed -->
+    <div class="column">
+      <div class="column-header">
+        <h2>Signal Feed</h2>
+        <span class="column-count" id="signal-feed-count">0</span>
+      </div>
+      <div class="column-body" id="signal-feed">
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton skeleton-card"></div>
+      </div>
+    </div>
+
+    <!-- Review Queue -->
+    <div class="column" style="border-left:1px solid var(--color-border);border-right:1px solid var(--color-border);">
+      <div class="column-header">
+        <h2>Review Queue</h2>
+        <span class="column-count" id="review-queue-count">0</span>
+      </div>
+      <div class="column-body" id="review-queue">
+        <div class="skeleton skeleton-review"></div>
+        <div class="skeleton skeleton-review"></div>
+      </div>
+    </div>
+
+    <!-- Published Articles -->
+    <div class="column">
+      <div class="column-header">
+        <h2>Published</h2>
+        <span class="column-count" id="published-list-count">0</span>
+      </div>
+      <div class="column-body" id="published-list">
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton skeleton-card"></div>
+      </div>
+    </div>
+
+    <!-- Pipeline Errors -->
+    <div class="errors-section" id="errors-section">
+      <div class="errors-header" id="errors-header">
+        <h3>
+          Pipeline Errors
+          <span class="error-count-badge" id="error-count-badge">0</span>
+        </h3>
+        <span class="errors-toggle" id="errors-toggle">▶ Expand</span>
+      </div>
+      <div class="errors-body" id="errors-body">
+        <table class="error-table">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Stage</th>
+              <th>Source</th>
+              <th>Error</th>
+            </tr>
+          </thead>
+          <tbody id="errors-tbody">
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <span>VettedAI Pipeline Dashboard v1.0</span>
+    <a href="https://www.perplexity.ai/computer" target="_blank" rel="noopener noreferrer">
+      Created with Perplexity Computer
+    </a>
+  </footer>
+</div>
+
+<!-- ─── Article Modal ─── -->
+<div class="modal-overlay" id="article-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-title"></span>
+      <button class="modal-close" id="modal-close">&times;</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-meta" id="modal-meta"></div>
+  </div>
+</div>
+
+<script>
+// ─── Supabase Configuration ───
+const SUPABASE_URL = 'PLACEHOLDER_URL';
+const SUPABASE_ANON_KEY = 'PLACEHOLDER_KEY';
+
+let db;
+try {
+  if (SUPABASE_URL !== 'PLACEHOLDER_URL' && SUPABASE_ANON_KEY !== 'PLACEHOLDER_KEY') {
+    db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  } else {
+    db = null;
+  }
+} catch (e) {
+  console.warn('Supabase client not initialized — using demo data', e);
+  db = null;
+}
+
+// ─── Pipeline Stage Definitions ───
+const PIPELINE_STAGES = [
+  { id: 'rss-scan', name: 'RSS Scan' },
+  { id: 'youtube-scan', name: 'YouTube Scan' },
+  { id: 'perplexity-scan', name: 'Perplexity Scan' },
+  { id: 'aggregation', name: 'Aggregation' },
+  { id: 'keyword-research', name: 'Keyword Research' },
+  { id: 'brief-gen', name: 'Brief Gen' },
+  { id: 'article-draft', name: 'Article Draft' },
+  { id: 'image-gen', name: 'Image Gen' },
+  { id: 'review-queue', name: 'Review Queue' }
+];
+
+// ─── State ───
+let signalData = [];
+let reviewData = [];
+let publishedData = [];
+let errorData = [];
+let refreshInterval = null;
+let refreshCountdown = 60;
+
+// ─── Helpers ───
+function relativeTime(dateStr) {
+  if (!dateStr) return '—';
+  const now = new Date();
+  const date = new Date(dateStr);
+  const diff = Math.floor((now - date) / 1000);
+  if (diff < 60) return `${diff}s ago`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return '—';
+  return new Date(dateStr).toLocaleDateString('en-US', {
+    month: 'short', day: 'numeric', year: 'numeric'
+  });
+}
+
+function formatDateTime(dateStr) {
+  if (!dateStr) return '—';
+  return new Date(dateStr).toLocaleString('en-US', {
+    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+  });
+}
+
+function getSourceBadgeClass(source) {
+  if (!source) return 'badge-rss';
+  const s = source.toLowerCase();
+  if (s.includes('youtube')) return 'badge-youtube';
+  if (s.includes('perplexity')) return 'badge-perplexity';
+  return 'badge-rss';
+}
+
+function getStatusClass(status) {
+  if (!status) return 'status-new';
+  const s = status.toLowerCase().replace(/\s+/g, '-');
+  const map = {
+    'new': 'status-new',
+    'queued': 'status-queued',
+    'draft-complete': 'status-draft-complete',
+    'in-review': 'status-in-review',
+    'pending-review': 'status-pending-review',
+    'published': 'status-published',
+    'revision-requested': 'status-revision-requested',
+  };
+  return map[s] || 'status-new';
+}
+
+function calcScore(signal) {
+  // Use calculated_score if available, else average of sub-scores
+  if (signal.calculated_score != null) return parseFloat(signal.calculated_score);
+  const scores = [
+    signal.score_relevance, signal.score_timeliness,
+    signal.score_smb_fit, signal.score_content_potential
+  ].filter(s => s != null);
+  if (scores.length === 0) return 0;
+  return scores.reduce((a, b) => a + b, 0) / scores.length;
+}
+
+function renderMarkdown(text) {
+  if (!text) return '<p style="color:var(--color-muted)">No content available.</p>';
+  try {
+    return marked.parse(text);
+  } catch {
+    return `<p>${text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>`;
+  }
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// ─── Render Pipeline Stages ───
+function renderPipelineStages() {
+  const container = document.getElementById('pipeline-stages');
+  container.innerHTML = PIPELINE_STAGES.map(stage => {
+    // Default to idle — in a real app these would come from a pipeline_status table
+    const status = 'idle';
+    const statusLabel = status.charAt(0).toUpperCase() + status.slice(1);
+    return `
+      <div class="stage">
+        <div class="stage-name">${stage.name}</div>
+        <div class="stage-status ${status}">
+          ${status === 'running' ? '<span class="pulse-dot"></span>' : ''}
+          ${statusLabel}
+        </div>
+        <div class="stage-time">—</div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ─── Render Signal Feed ───
+function renderSignalFeed(signals) {
+  const container = document.getElementById('signal-feed');
+  const countEl = document.getElementById('signal-feed-count');
+  countEl.textContent = signals.length;
+
+  if (signals.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+        </svg>
+        <h3>No signals yet</h3>
+        <p>Pipeline scans will populate this feed</p>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = signals.map((signal, i) => {
+    const score = calcScore(signal);
+    const scorePct = Math.min(score / 10 * 100, 100);
+    const source = signal.source || 'RSS';
+    const status = signal.status || 'new';
+    const category = signal.category || '';
+
+    return `
+      <div class="signal-card" data-index="${i}" onclick="toggleSignal(this)">
+        <div class="signal-topic">${escapeHtml(signal.topic || signal.title || 'Untitled Signal')}</div>
+        <div class="signal-meta">
+          <span class="badge ${getSourceBadgeClass(source)}">${escapeHtml(source)}</span>
+          ${category ? `<span class="badge badge-category">${escapeHtml(category)}</span>` : ''}
+          <span class="status-pill ${getStatusClass(status)}">${escapeHtml(status)}</span>
+        </div>
+        <div class="score-row">
+          <span class="score-label">Score</span>
+          <div class="score-bar"><div class="score-bar-fill" style="width:${scorePct}%"></div></div>
+          <span class="score-value">${score.toFixed(1)}</span>
+        </div>
+        <div class="signal-timestamp">${relativeTime(signal.created_at)}</div>
+        <div class="signal-expanded">
+          <div class="signal-summary">${escapeHtml(signal.summary || '')}</div>
+          ${signal.score_relevance != null ? `
+            <div class="score-row">
+              <span class="score-label">Relevance</span>
+              <div class="score-bar"><div class="score-bar-fill" style="width:${(signal.score_relevance / 10 * 100)}%"></div></div>
+              <span class="score-value">${parseFloat(signal.score_relevance).toFixed(1)}</span>
+            </div>
+          ` : ''}
+          ${signal.score_timeliness != null ? `
+            <div class="score-row">
+              <span class="score-label">Timeliness</span>
+              <div class="score-bar"><div class="score-bar-fill" style="width:${(signal.score_timeliness / 10 * 100)}%"></div></div>
+              <span class="score-value">${parseFloat(signal.score_timeliness).toFixed(1)}</span>
+            </div>
+          ` : ''}
+          ${signal.score_smb_fit != null ? `
+            <div class="score-row">
+              <span class="score-label">SMB Fit</span>
+              <div class="score-bar"><div class="score-bar-fill" style="width:${(signal.score_smb_fit / 10 * 100)}%"></div></div>
+              <span class="score-value">${parseFloat(signal.score_smb_fit).toFixed(1)}</span>
+            </div>
+          ` : ''}
+          ${signal.score_content_potential != null ? `
+            <div class="score-row">
+              <span class="score-label">Content Pot.</span>
+              <div class="score-bar"><div class="score-bar-fill" style="width:${(signal.score_content_potential / 10 * 100)}%"></div></div>
+              <span class="score-value">${parseFloat(signal.score_content_potential).toFixed(1)}</span>
+            </div>
+          ` : ''}
+          ${signal.smb_relevance_reason ? `<div class="signal-reason">SMB Relevance: ${escapeHtml(signal.smb_relevance_reason)}</div>` : ''}
+          ${signal.brief_id ? `<button class="btn-view-brief" onclick="event.stopPropagation()">View Brief</button>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function toggleSignal(card) {
+  const wasActive = card.classList.contains('active');
+  document.querySelectorAll('.signal-card.active').forEach(c => c.classList.remove('active'));
+  if (!wasActive) card.classList.add('active');
+}
+
+// ─── Render Review Queue ───
+function renderReviewQueue(articles) {
+  const container = document.getElementById('review-queue');
+  const countEl = document.getElementById('review-queue-count');
+  countEl.textContent = articles.length;
+
+  if (articles.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M9 12l2 2 4-4"/>
+          <circle cx="12" cy="12" r="10"/>
+        </svg>
+        <h3>No articles pending review</h3>
+        <p>Approved articles will appear in the Published column</p>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = articles.map((article, i) => {
+    const signal = article.content_signals || {};
+    const score = calcScore(signal);
+    const scorePct = Math.min(score / 10 * 100, 100);
+    const wordCount = article.body ? article.body.split(/\s+/).length : (article.word_count || 0);
+
+    return `
+      <div class="review-card" data-article-id="${article.id}" data-signal-id="${signal.id || article.signal_id || ''}">
+        ${article.featured_image ? `<img class="review-thumb" src="${escapeHtml(article.featured_image)}" alt="" loading="lazy" onerror="this.style.display='none'">` : ''}
+        <div class="review-title">${escapeHtml(article.title || 'Untitled Article')}</div>
+        <div class="review-meta">
+          ${article.primary_keyword ? `<span class="badge badge-rss">${escapeHtml(article.primary_keyword)}</span>` : ''}
+          <span class="review-meta-item">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            ${wordCount.toLocaleString()} words
+          </span>
+        </div>
+        <div class="score-row" style="margin-bottom:8px">
+          <span class="score-label">Signal Score</span>
+          <div class="score-bar"><div class="score-bar-fill" style="width:${scorePct}%"></div></div>
+          <span class="score-value">${score.toFixed(1)}</span>
+        </div>
+        <div class="review-body">${renderMarkdown(article.body)}</div>
+        <div class="review-actions">
+          <button class="btn-approve" onclick="approveArticle('${article.id}', '${signal.id || article.signal_id || ''}')">⬆ Approve &amp; Publish</button>
+          <button class="btn-revisions" onclick="showRevisionForm(this)">✎ Request Revisions</button>
+        </div>
+        <div class="revision-form" id="revision-form-${article.id}">
+          <textarea class="revision-textarea" placeholder="Describe the revisions needed..." id="revision-notes-${article.id}"></textarea>
+          <button class="btn-submit-revision" onclick="requestRevisions('${article.id}')">Submit Revision Request</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function showRevisionForm(btn) {
+  const card = btn.closest('.review-card');
+  const form = card.querySelector('.revision-form');
+  form.classList.toggle('active');
+  if (form.classList.contains('active')) {
+    form.querySelector('textarea').focus();
+  }
+}
+
+// ─── Render Published List ───
+function renderPublishedList(articles) {
+  const container = document.getElementById('published-list');
+  const countEl = document.getElementById('published-list-count');
+  countEl.textContent = articles.length;
+
+  if (articles.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M12 20V10M18 20V4M6 20v-4"/>
+        </svg>
+        <h3>No published articles</h3>
+        <p>Approve articles from the review queue</p>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = articles.map(article => {
+    const wordCount = article.body ? article.body.split(/\s+/).length : (article.word_count || 0);
+    const signal = article.content_signals || {};
+    const score = calcScore(signal);
+
+    return `
+      <div class="published-card" onclick='openArticleModal(${JSON.stringify(article).replace(/'/g, "&#39;")})'>
+        <div class="published-title">${escapeHtml(article.title || 'Untitled')}</div>
+        <div class="published-meta">
+          <span>${formatDate(article.published_at)}</span>
+          <span>·</span>
+          <span>${wordCount.toLocaleString()} words</span>
+          <span>·</span>
+          <span class="tabular">${score.toFixed(1)}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ─── Render Pipeline Errors ───
+function renderPipelineErrors(errors) {
+  const tbody = document.getElementById('errors-tbody');
+  const badge = document.getElementById('error-count-badge');
+  badge.textContent = errors.length;
+
+  if (errors.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--color-muted);padding:16px">No errors recorded</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = errors.map(err => `
+    <tr>
+      <td class="error-time">${formatDateTime(err.created_at)}</td>
+      <td class="error-stage">${escapeHtml(err.stage || '—')}</td>
+      <td>${escapeHtml(err.source || '—')}</td>
+      <td class="error-msg" title="${escapeHtml(err.error_message || err.message || '')}">${escapeHtml(err.error_message || err.message || '—')}</td>
+    </tr>
+  `).join('');
+}
+
+// ─── Modal ───
+function openArticleModal(article) {
+  const modal = document.getElementById('article-modal');
+  document.getElementById('modal-title').textContent = article.title || 'Untitled';
+  document.getElementById('modal-body').innerHTML = renderMarkdown(article.body);
+  const wordCount = article.body ? article.body.split(/\s+/).length : (article.word_count || 0);
+  document.getElementById('modal-meta').innerHTML = `
+    <span>Published: ${formatDate(article.published_at)}</span>
+    <span>${wordCount.toLocaleString()} words</span>
+    ${article.primary_keyword ? `<span>Keyword: ${escapeHtml(article.primary_keyword)}</span>` : ''}
+  `;
+  modal.classList.add('active');
+}
+
+document.getElementById('modal-close').addEventListener('click', () => {
+  document.getElementById('article-modal').classList.remove('active');
+});
+
+document.getElementById('article-modal').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) {
+    e.currentTarget.classList.remove('active');
+  }
+});
+
+// ─── Actions ───
+async function approveArticle(articleId, signalId) {
+  if (!db) {
+    alert('Supabase not configured. Connect to approve articles.');
+    return;
+  }
+
+  const btn = event.target;
+  btn.textContent = 'Publishing...';
+  btn.disabled = true;
+
+  try {
+    const now = new Date().toISOString();
+
+    // Update article
+    const { error: articleError } = await db
+      .from('articles')
+      .update({ status: 'published', published_at: now })
+      .eq('id', articleId);
+
+    if (articleError) throw articleError;
+
+    // Update related signal
+    if (signalId) {
+      await db
+        .from('content_signals')
+        .update({ status: 'published' })
+        .eq('id', signalId);
+    }
+
+    await refreshAllData();
+  } catch (err) {
+    console.error('Approve failed:', err);
+    alert('Failed to approve: ' + err.message);
+    btn.textContent = '⬆ Approve & Publish';
+    btn.disabled = false;
+  }
+}
+
+async function requestRevisions(articleId) {
+  if (!db) {
+    alert('Supabase not configured.');
+    return;
+  }
+
+  const notes = document.getElementById(`revision-notes-${articleId}`).value.trim();
+  if (!notes) {
+    alert('Please enter revision notes.');
+    return;
+  }
+
+  try {
+    const { error } = await db
+      .from('articles')
+      .update({
+        status: 'revision-requested',
+        revision_notes: notes
+      })
+      .eq('id', articleId);
+
+    if (error) throw error;
+    await refreshAllData();
+  } catch (err) {
+    console.error('Revision request failed:', err);
+    alert('Failed: ' + err.message);
+  }
+}
+
+// ─── Errors Section Toggle ───
+document.getElementById('errors-header').addEventListener('click', () => {
+  const section = document.getElementById('errors-section');
+  const toggle = document.getElementById('errors-toggle');
+  section.classList.toggle('expanded');
+  toggle.textContent = section.classList.contains('expanded') ? '▼ Collapse' : '▶ Expand';
+});
+
+// ─── Data Fetching ───
+async function fetchSignals() {
+  if (!db) return getDemoSignals();
+  try {
+    const { data, error } = await db
+      .from('content_signals')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(100);
+    if (error) throw error;
+    return data || [];
+  } catch (err) {
+    console.error('Fetch signals error:', err);
+    return getDemoSignals();
+  }
+}
+
+async function fetchReviewArticles() {
+  if (!db) return getDemoReviewArticles();
+  try {
+    const { data, error } = await db
+      .from('articles')
+      .select('*, content_signals(*)')
+      .eq('status', 'pending-review')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  } catch (err) {
+    console.error('Fetch review articles error:', err);
+    return getDemoReviewArticles();
+  }
+}
+
+async function fetchPublishedArticles() {
+  if (!db) return getDemoPublishedArticles();
+  try {
+    const { data, error } = await db
+      .from('articles')
+      .select('*, content_signals(*)')
+      .eq('status', 'published')
+      .order('published_at', { ascending: false })
+      .limit(50);
+    if (error) throw error;
+    return data || [];
+  } catch (err) {
+    console.error('Fetch published error:', err);
+    return getDemoPublishedArticles();
+  }
+}
+
+async function fetchPipelineErrors() {
+  if (!db) return getDemoErrors();
+  try {
+    const { data, error } = await db
+      .from('pipeline_errors')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(20);
+    if (error) throw error;
+    return data || [];
+  } catch (err) {
+    console.error('Fetch errors:', err);
+    return getDemoErrors();
+  }
+}
+
+// ─── Demo Data (when Supabase not configured) ───
+function getDemoSignals() {
+  return [
+    { id: '1', topic: 'AI-Powered Inventory Management Systems for Small Retailers', source: 'RSS', status: 'queued', category: 'AI Tools', calculated_score: 8.2, score_relevance: 8.5, score_timeliness: 9.0, score_smb_fit: 7.8, score_content_potential: 7.5, summary: 'New wave of AI inventory tools designed specifically for small-to-medium retailers are emerging, promising to reduce stockouts by up to 40%.', smb_relevance_reason: 'Directly addresses SMB pain point of inventory management with affordable AI solutions.', created_at: new Date(Date.now() - 1800000).toISOString() },
+    { id: '2', topic: 'How Small Businesses Are Using ChatGPT for Customer Service', source: 'YouTube', status: 'new', category: 'AI Adoption', calculated_score: 7.6, score_relevance: 7.0, score_timeliness: 8.5, score_smb_fit: 8.0, score_content_potential: 7.0, summary: 'A comprehensive video walkthrough showing real small business owners implementing ChatGPT-based chatbots for 24/7 customer support.', smb_relevance_reason: 'Practical implementation guide for SMB customer service automation.', created_at: new Date(Date.now() - 3600000).toISOString() },
+    { id: '3', topic: '2026 Tax Changes Every Small Business Owner Should Know', source: 'Perplexity', status: 'draft-complete', category: 'Finance', calculated_score: 9.1, score_relevance: 9.5, score_timeliness: 9.8, score_smb_fit: 8.5, score_content_potential: 8.5, summary: 'Comprehensive analysis of upcoming tax regulation changes for 2026 including new deduction opportunities and compliance requirements for small businesses.', smb_relevance_reason: 'Critical financial information directly impacting SMB bottom line.', brief_id: 'brief-1', created_at: new Date(Date.now() - 7200000).toISOString() },
+    { id: '4', topic: 'Remote Work Productivity Tools Comparison: 2026 Edition', source: 'RSS', status: 'new', category: 'Productivity', calculated_score: 6.8, score_relevance: 6.5, score_timeliness: 7.0, score_smb_fit: 7.5, score_content_potential: 6.0, summary: 'Updated comparison of the top 15 remote work productivity tools, evaluating pricing, features, and SMB-friendliness.', smb_relevance_reason: 'Helpful for SMBs managing remote teams.', created_at: new Date(Date.now() - 14400000).toISOString() },
+    { id: '5', topic: 'Google Ads Automation: New Smart Bidding Strategies for Local Businesses', source: 'YouTube', status: 'queued', category: 'Marketing', calculated_score: 7.9, score_relevance: 8.0, score_timeliness: 8.0, score_smb_fit: 8.5, score_content_potential: 7.0, summary: 'Google rolls out new Smart Bidding strategies specifically optimized for local business advertising, featuring location-based targeting enhancements.', smb_relevance_reason: 'Local advertising optimization is a top priority for brick-and-mortar SMBs.', created_at: new Date(Date.now() - 21600000).toISOString() },
+    { id: '6', topic: 'Cybersecurity Essentials: Protecting Your Small Business in 2026', source: 'Perplexity', status: 'in-review', category: 'Security', calculated_score: 8.7, score_relevance: 9.0, score_timeliness: 8.5, score_smb_fit: 8.8, score_content_potential: 8.5, summary: 'Rising cyber threats targeting small businesses in 2026, with practical mitigation strategies that do not require enterprise-level budgets.', smb_relevance_reason: 'SMBs are increasingly targeted; affordable security measures are critical.', created_at: new Date(Date.now() - 43200000).toISOString() },
+    { id: '7', topic: 'Social Commerce Growth: Selling Directly on Instagram and TikTok', source: 'RSS', status: 'published', category: 'E-commerce', calculated_score: 7.3, score_relevance: 7.0, score_timeliness: 8.0, score_smb_fit: 7.0, score_content_potential: 7.0, summary: 'Social commerce platforms see 45% year-over-year growth, with small businesses leading adoption of in-app shopping features.', smb_relevance_reason: 'Low-barrier entry point for SMBs to expand sales channels.', created_at: new Date(Date.now() - 86400000).toISOString() },
+    { id: '8', topic: 'Supply Chain Disruption Alert: Key Materials Shortage Expected Q2 2026', source: 'Perplexity', status: 'new', category: 'Operations', calculated_score: 8.5, score_relevance: 8.0, score_timeliness: 9.5, score_smb_fit: 8.0, score_content_potential: 8.5, summary: 'Industry analysts predict significant shortages in key manufacturing materials during Q2 2026, with recommendations for proactive procurement.', smb_relevance_reason: 'Early warning allows SMBs to adjust procurement strategies.', created_at: new Date(Date.now() - 90000000).toISOString() },
+  ];
+}
+
+function getDemoReviewArticles() {
+  return [
+    {
+      id: 'art-1',
+      title: 'AI-Powered Inventory Management: A Small Retailer\'s Guide',
+      primary_keyword: 'AI inventory management',
+      featured_image: null,
+      body: '## Introduction\n\nSmall retailers face unique inventory challenges that enterprise solutions often fail to address. The latest generation of AI-powered inventory management tools is changing this landscape.\n\n## Why AI Inventory Management Matters\n\nTraditional inventory management relies on manual counts, spreadsheet tracking, and gut feelings. AI tools can:\n\n- **Predict demand** based on historical data, seasonality, and market trends\n- **Automate reordering** when stock reaches optimal reorder points\n- **Reduce waste** by identifying slow-moving inventory early\n- **Optimize pricing** dynamically based on supply and demand signals\n\n## Top Solutions for Small Retailers\n\n### 1. StockSmart AI\nStarting at $49/month, StockSmart offers demand forecasting and automated purchase orders. Best for retailers with 100-5,000 SKUs.\n\n### 2. RetailPulse\nFree tier available for up to 200 products. Uses computer vision for shelf monitoring and integrates with major POS systems.\n\n### 3. InventoryBot Pro\nAI-powered analytics with Shopify and WooCommerce integration. Predictive restocking alerts reduced stockouts by 37% in beta testing.\n\n## Implementation Tips\n\n1. Start with your top 20% of SKUs (they likely drive 80% of revenue)\n2. Allow 2-4 weeks of data collection before trusting AI recommendations\n3. Keep manual override options — AI assists, humans decide\n4. Review AI suggestions weekly, not daily, to avoid micro-management\n\n## Conclusion\n\nAI inventory management is no longer a luxury reserved for large retailers. With solutions starting under $50/month, small retailers can compete with the efficiency of much larger operations.',
+      status: 'pending-review',
+      created_at: new Date(Date.now() - 3600000).toISOString(),
+      signal_id: '1',
+      content_signals: { id: '1', calculated_score: 8.2, score_relevance: 8.5, score_timeliness: 9.0, score_smb_fit: 7.8, score_content_potential: 7.5 }
+    },
+    {
+      id: 'art-2',
+      title: '2026 Tax Changes: What Every Small Business Owner Needs to Know',
+      primary_keyword: 'small business tax 2026',
+      featured_image: null,
+      body: '## Key Tax Changes for 2026\n\nThe new fiscal year brings several important tax changes that will directly impact small businesses.\n\n### Increased Section 179 Deduction\n\nThe Section 179 deduction limit increases to **$1,220,000** for 2026, up from $1,160,000. This means small businesses can deduct more of their equipment purchases immediately.\n\n### Qualified Business Income (QBI) Deduction Updates\n\nThe QBI deduction remains at 20% for pass-through entities, but new income thresholds apply:\n- Single filers: $191,950\n- Joint filers: $383,900\n\n### New Energy Efficiency Credits\n\nSmall businesses investing in energy-efficient equipment or renovations can claim up to **30% in tax credits**, with a maximum of $50,000 per location.\n\n### Estimated Tax Payment Changes\n\nThe IRS now requires quarterly estimated payments to be calculated using the **annualized income installment method** for businesses with income exceeding $500,000.\n\n## Action Items\n\n1. Review your equipment purchase plans to maximize Section 179\n2. Consult with your tax advisor about QBI optimization\n3. Evaluate energy-efficient upgrades for the new credits\n4. Adjust estimated tax calculations accordingly\n\n## Timeline\n\n| Change | Effective Date |\n|--------|---------------|\n| Section 179 increase | Jan 1, 2026 |\n| QBI thresholds | Tax year 2026 |\n| Energy credits | Jan 1, 2026 |\n| Estimated tax rules | Q1 2026 |',
+      status: 'pending-review',
+      created_at: new Date(Date.now() - 7200000).toISOString(),
+      signal_id: '3',
+      content_signals: { id: '3', calculated_score: 9.1, score_relevance: 9.5, score_timeliness: 9.8, score_smb_fit: 8.5, score_content_potential: 8.5 }
+    }
+  ];
+}
+
+function getDemoPublishedArticles() {
+  return [
+    {
+      id: 'pub-1',
+      title: 'Social Commerce: How to Sell Directly on Instagram and TikTok in 2026',
+      primary_keyword: 'social commerce',
+      body: '## The Rise of Social Commerce\n\nSocial media platforms have evolved beyond marketing channels into full-fledged sales platforms. In 2026, small businesses that embrace social commerce are seeing dramatic results.\n\n## Getting Started\n\nSetting up shop on Instagram and TikTok requires understanding each platform\'s unique commerce features and audience expectations.\n\n## Best Practices\n\n- Create authentic, behind-the-scenes content\n- Use live shopping events for product launches\n- Leverage user-generated content for social proof\n- Optimize product tags and descriptions for discovery',
+      published_at: new Date(Date.now() - 172800000).toISOString(),
+      word_count: 1250,
+      content_signals: { calculated_score: 7.3 }
+    },
+    {
+      id: 'pub-2',
+      title: 'Remote Work Tools Ranked: The Best Options for Small Teams in 2026',
+      primary_keyword: 'remote work tools',
+      body: '## Introduction\n\nWith remote work firmly established as the norm for many small businesses, choosing the right tools is more important than ever.\n\n## Our Top Picks\n\n### Communication\n1. Slack — Still the standard for team messaging\n2. Microsoft Teams — Best for Office 365 shops\n\n### Project Management\n1. Linear — Clean, fast, developer-friendly\n2. Notion — All-in-one workspace\n\n### Video Conferencing\n1. Zoom — Reliable and feature-rich\n2. Google Meet — Simple and integrated',
+      published_at: new Date(Date.now() - 432000000).toISOString(),
+      word_count: 2100,
+      content_signals: { calculated_score: 6.8 }
+    },
+    {
+      id: 'pub-3',
+      title: '5 Marketing Automation Workflows Every Small Business Should Set Up',
+      primary_keyword: 'marketing automation SMB',
+      body: '## Why Marketing Automation?\n\nSmall businesses often lack the staff to run sophisticated marketing campaigns manually. Automation bridges this gap.\n\n## The 5 Essential Workflows\n\n1. Welcome email series for new subscribers\n2. Abandoned cart recovery sequence\n3. Post-purchase follow-up and review request\n4. Re-engagement campaign for inactive contacts\n5. Birthday/anniversary personalized offers',
+      published_at: new Date(Date.now() - 604800000).toISOString(),
+      word_count: 1800,
+      content_signals: { calculated_score: 7.5 }
+    }
+  ];
+}
+
+function getDemoErrors() {
+  return [
+    { id: 'err-1', stage: 'RSS Scan', source: 'TechCrunch Feed', error_message: 'HTTP 429 Too Many Requests — rate limited. Retrying in 60s.', created_at: new Date(Date.now() - 7200000).toISOString() },
+    { id: 'err-2', stage: 'YouTube Scan', source: 'YouTube API', error_message: 'Quota exceeded for youtube.googleapis.com. Daily limit reached.', created_at: new Date(Date.now() - 14400000).toISOString() },
+    { id: 'err-3', stage: 'Article Draft', source: 'OpenAI API', error_message: 'Request timeout after 30s — article generation for signal #42 failed.', created_at: new Date(Date.now() - 28800000).toISOString() },
+    { id: 'err-4', stage: 'Image Gen', source: 'DALL-E 3', error_message: 'Content policy violation: generated image rejected. Prompt requires revision.', created_at: new Date(Date.now() - 43200000).toISOString() },
+  ];
+}
+
+// ─── Refresh ───
+async function refreshAllData() {
+  const btn = document.getElementById('btn-refresh');
+  btn.classList.add('spinning');
+
+  try {
+    const [signals, review, published, errors] = await Promise.all([
+      fetchSignals(),
+      fetchReviewArticles(),
+      fetchPublishedArticles(),
+      fetchPipelineErrors()
+    ]);
+
+    signalData = signals;
+    reviewData = review;
+    publishedData = published;
+    errorData = errors;
+
+    renderSignalFeed(signals);
+    renderReviewQueue(review);
+    renderPublishedList(published);
+    renderPipelineErrors(errors);
+
+    // Update global counters
+    document.getElementById('total-signals').textContent = signals.length;
+    document.getElementById('pending-review').textContent = review.length;
+    document.getElementById('published-count').textContent = published.length;
+  } catch (err) {
+    console.error('Refresh error:', err);
+  } finally {
+    btn.classList.remove('spinning');
+    refreshCountdown = 60;
+  }
+}
+
+// ─── Refresh button ───
+document.getElementById('btn-refresh').addEventListener('click', refreshAllData);
+
+// ─── Auto-refresh countdown ───
+function startAutoRefresh() {
+  refreshCountdown = 60;
+  if (refreshInterval) clearInterval(refreshInterval);
+  refreshInterval = setInterval(() => {
+    refreshCountdown--;
+    document.getElementById('refresh-timer').textContent = `Auto-refresh: ${refreshCountdown}s`;
+    if (refreshCountdown <= 0) {
+      refreshAllData();
+    }
+  }, 1000);
+}
+
+// ─── Keyboard shortcuts ───
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    document.getElementById('article-modal').classList.remove('active');
+  }
+  if (e.key === 'r' && !e.ctrlKey && !e.metaKey && document.activeElement.tagName !== 'TEXTAREA' && document.activeElement.tagName !== 'INPUT') {
+    refreshAllData();
+  }
+});
+
+// ─── Init ───
+renderPipelineStages();
+refreshAllData();
+startAutoRefresh();
+</script>
+</body>
+</html>
